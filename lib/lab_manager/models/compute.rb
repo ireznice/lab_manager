@@ -42,8 +42,8 @@ class Compute < ActiveRecord::Base
     suspending suspended resuming reverting
     terminating terminated errored queued)) }
 
-  serialize :create_vm_options
-  serialize :provider_data
+  serialize :create_vm_options, JSON
+  serialize :provider_data, JSON
 
   delegate :create_vm,
            :terminate_vm,
@@ -145,8 +145,19 @@ class Compute < ActiveRecord::Base
   end
 
   def reload_provider_data
-    provider.set_provider_data(nil, full: true)
-    save!
+    return self unless provider_data
+    return self if dead?
+    Retryable.retryable(
+      tries: 3,
+      sleep: 5,
+      exception_cb: Provider::VSphere::RETRYABLE_CALLBACK,
+      on: Fog::Compute::Vsphere::NotFound
+    ) do
+      provider.set_provider_data(nil, full: true)
+      save!
+    end
+    self
+  rescue Fog::Compute::Vsphere::NotFound
     self
   end
 

@@ -39,33 +39,33 @@ describe Provider::VSphere do
 
   describe 'with_connection' do
     it 'calls reload function automatically when RbVmomi::Fault occured' do
-      allow(vsphere_mock).to receive(:current_time) { raise RbVmomi::Fault.new('foo', nil) }
+      allow(vsphere_mock).to receive(:current_time) { fail RbVmomi::Fault.new('foo', nil) }
       allow(vsphere_mock).to receive(:abc) { true }
       expect(vsphere_mock).to receive(:reload).once
-      Provider::VSphere.with_connection { |vs| vs.abc }
+      Provider::VSphere.with_connection(&:abc)
     end
 
     it 'calls reload function automatically when Errno::EPIPE occured' do
-      allow(vsphere_mock).to receive(:current_time) { raise Errno::EPIPE }
+      allow(vsphere_mock).to receive(:current_time) { fail Errno::EPIPE }
       allow(vsphere_mock).to receive(:abc) { true }
       expect(vsphere_mock).to receive(:reload).once
-      Provider::VSphere.with_connection { |vs| vs.abc }
+      Provider::VSphere.with_connection(&:abc)
     end
 
     it 'calls reload function automatically when EOFError occured' do
-      allow(vsphere_mock).to receive(:current_time) { raise EOFError }
+      allow(vsphere_mock).to receive(:current_time) { fail EOFError }
       allow(vsphere_mock).to receive(:abc) { true }
       expect(vsphere_mock).to receive(:reload).once
-      Provider::VSphere.with_connection { |vs| vs.abc }
+      Provider::VSphere.with_connection(&:abc)
     end
 
     it 'does not call reload function automatically when other error occured' do
-      allow(vsphere_mock).to receive(:current_time) { raise Exception }
+      allow(vsphere_mock).to receive(:current_time) { fail Exception, 'foo' }
       allow(vsphere_mock).to receive(:abc) { true }
       expect(vsphere_mock).to_not receive(:reload)
       expect do
-        Provider::VSphere.with_connection { |vs| vs.abc }
-      end.to raise_error Exception
+        Provider::VSphere.with_connection(&:abc)
+      end.to raise_error 'foo'
     end
   end
 

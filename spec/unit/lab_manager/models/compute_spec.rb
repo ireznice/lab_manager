@@ -48,5 +48,35 @@ describe Compute do
         expect(compute.actions.last.persisted?).to be true
       end
     end
+
+    describe '#reload_provider_data' do
+      let(:compute) { build(:compute) }
+      let(:fake_provider) { double('fake provider') }
+      let(:perform_action) { compute.reload_provider_data }
+      let(:set_provider_data) { compute.provider_data = { a: 'b' } }
+
+      before :each do
+        allow(compute).to receive(:provider).and_return(fake_provider)
+      end
+
+      it 'does not call provider#set_provider_data when compute in dead state' do
+        expect(fake_provider).to_not receive(:set_provider_data)
+        perform_action
+      end
+
+      it 'does not call provider#set_provider_data when compute in dead state' do
+        set_provider_data
+        expect(fake_provider).to_not receive(:set_provider_data)
+        compute.terminate!
+        compute.terminated!
+        perform_action
+      end
+
+      it 'calls provider#set_provider_data otherwise' do
+        set_provider_data
+        expect(fake_provider).to receive(:set_provider_data) { fail 'foo' }
+        expect { perform_action }.to raise_error 'foo'
+      end
+    end
   end
 end

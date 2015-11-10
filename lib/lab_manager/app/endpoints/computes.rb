@@ -24,7 +24,8 @@ module LabManager
           begin
             ids = params[:id].to_s.split(',').each(&:to_i)
             computes = ::Compute.find(ids.count == 1 ? params[:id] : ids)
-            Array.wrap(computes).map(&:reload_provider_data) unless ['false', 'f', '0'].include?(params[:cached])
+            Array.wrap(computes)
+              .map(&:reload_provider_data) unless %w(false f 0).include?(params[:cached])
             computes.to_json
           rescue ActiveRecord::RecordNotFound => e
             halt 404, { message: e.message }.to_json
@@ -44,6 +45,17 @@ module LabManager
           compute = ::Compute.find(params[:id])
           compute.actions.create!(command: :terminate_vm).to_json
         end
+
+        get '/:id/actions' do
+          compute = ::Compute.find(params[:id])
+          compute.actions.to_json
+        end
+
+        get '/:compute_id/actions/:id' do
+          compute = ::Compute.find(params[:compute_id])
+          compute.actions.find(params[:id]).to_json
+        end
+
 
         # actions
 
