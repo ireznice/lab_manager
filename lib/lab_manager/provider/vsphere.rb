@@ -106,6 +106,7 @@ module Provider
           on: [RbVmomi::Fault, CreateVMError],
           exception_cb: exception_cb
         ) do
+          begin
           machine = vs.vm_clone(
             'datacenter'    => opts[:datacenter],
             'datastore'     => opts[:datastore],
@@ -117,10 +118,14 @@ module Provider
             'power_on'      => opts[:power_on],
             'wait'          => true
           )
+          rescue  => e
+            LabManager.logger.debug("exc: #{e.inspect}")
+          end
 
           fail CreateVMError, "CreationFailed, retrying (#{vm_name})" unless machine['vm_ref']
           set_provider_data(machine['new_vm'], vs: vs)
         end
+
         add_machine_to_drs_rule(
           vs,
           group: opts[:add_to_drs_group],
@@ -368,13 +373,32 @@ module Provider
 
     def vm_data(vm_instance_data = nil, full: false, vs: nil)
       data_proc = lambda do |vs_|
+        net_info = []
+        if compute.provider_data && compute.provider_data['uuid']
+          conn = vs_.instance_variable_get('@connection'.to_sym)
+          puts "conn #{conn}"
+          vm = conn.searchIndex.FindByUuid({ uuid: compute.provider_data['uuid'], vmSearch: true })
+          net_info = vm.guest.net.map do |net|
+            {
+              network: net.network,
+              connected: net.connected,
+              device_config_id: net.deviceConfigId,
+              ip_addresses: net.ipConfig.ipAddress.each_with_object({}) do |ip, res|
+                addr = IPAddr.new(ip.ipAddress)
+                res[addr.to_s] = addr.ipv4? ? 'ipv4' : 'ipv6'
+                res
+              end
+            }
+          end
+        end
+
         vm_instance_data ||= vs_.get_virtual_machine(compute.provider_data['id'])
         vm_instance_data.each_with_object({}) do |(k, v), s|
           s[k] = case v
                  when Proc then full ? v.call : nil
                  when String then v
                  end
-        end
+        end.merge(network_info: net_info)
       end
 
       if vs
@@ -388,7 +412,6 @@ module Provider
       if vm_instance_data.nil?
         begin
           return compute.provider_data unless compute.provider_data.include? 'id'
-
           Retryable.retryable(
             tries: 3,
             sleep: 5,
