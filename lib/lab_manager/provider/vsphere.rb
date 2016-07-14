@@ -384,8 +384,9 @@ module Provider
               connected: net.connected,
               device_config_id: net.deviceConfigId,
               ip_addresses: net.ipConfig.ipAddress.each_with_object({}) do |ip, res|
-                addr = IPAddr.new(ip.ipAddress)
-                res[addr.to_s] = addr.ipv4? ? 'ipv4' : 'ipv6'
+                key = IPAddr.new(ip.ipAddress).ipv4? ? 'ipv4' : 'ipv6'
+                res[key] ||= []
+                res[key] << ip.ipAddress
                 res
               end
             }
