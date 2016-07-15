@@ -66,6 +66,7 @@ module LabManager
       rescue => e
         action.failed
         action.reason = e.to_s
+        LabManager.logger.error e
         action.save!
         lock { compute.fatal_error! }
       end
@@ -81,6 +82,7 @@ module LabManager
       rescue => e
         action.failed
         action.reason = e.to_s
+        LabManager.logger.error e
         action.save!
         lock { compute.fatal_error! }
       end

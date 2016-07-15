@@ -33,17 +33,24 @@ module Provider
           begin
             conn.current_time
           rescue RbVmomi::Fault, Errno::EPIPE, EOFError
-            conn.reload
+            #conn.reload
+            LabManager.logger.warn("OOPS, connection isnt working, created new one")
+            conn = Fog::Compute.new( {provider: :vsphere}.merge(VSphereConfig.connection ) )
           end
           yield conn
         end
       end
 
       def filter_machines_to_be_scheduled(
-        queued_machines: Compute.created.where(provider_name: 'v_sphere'),
+        created_machines: Compute.created.where(provider_name: 'v_sphere'),
         alive_machines: Compute.alive_vm.where(provider_name: 'v_sphere').order(:created_at)
       )
-        queued_machines.limit([0, VSphereConfig.scheduler.max_vm - alive_machines.count].max)
+        limit = [0, VSphereConfig.scheduler.max_vm - alive_machines.count].max
+
+        LabManager.logger.warn "allowed to be scheduled: #{limit}"
+        LabManager.logger.warn("alive_machines: #{alive_machines.count}, created_machines: #{created_machines.count}")
+
+        created_machines.limit(limit)
       end
     end
 
@@ -106,7 +113,6 @@ module Provider
           on: [RbVmomi::Fault, CreateVMError],
           exception_cb: exception_cb
         ) do
-          begin
           machine = vs.vm_clone(
             'datacenter'    => opts[:datacenter],
             'datastore'     => opts[:datastore],
@@ -118,11 +124,8 @@ module Provider
             'power_on'      => opts[:power_on],
             'wait'          => true
           )
-          rescue  => e
-            LabManager.logger.debug("exc: #{e.inspect}")
-          end
 
-          fail CreateVMError, "CreationFailed, retrying (#{vm_name})" unless machine['vm_ref']
+          fail CreateVMError, "CreationFailed, retrying (#{vm_name})" unless machine || machine['vm_ref']
           set_provider_data(machine['new_vm'], vs: vs)
         end
 
