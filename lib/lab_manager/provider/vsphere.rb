@@ -43,12 +43,15 @@ module Provider
 
       def filter_machines_to_be_scheduled(
         created_machines: Compute.created.where(provider_name: 'v_sphere'),
-        alive_machines: Compute.alive_vm.where(provider_name: 'v_sphere').order(:created_at)
+        alive_machines: Compute.alive_vm.where(provider_name: 'v_sphere').order(:created_at),
+        errored_machines: Compute.where(state: 'errored')
       )
-        limit = [0, VSphereConfig.scheduler.max_vm - alive_machines.count].max
+        alive_with_errored = alive_machines.count + errored_machines.count
+
+        limit = [0, VSphereConfig.scheduler.max_vm - alive_with_errored].max
 
         LabManager.logger.warn "allowed to be scheduled: #{limit}"
-        LabManager.logger.warn("alive_machines: #{alive_machines.count}, created_machines: #{created_machines.count}")
+        LabManager.logger.warn("alive_machines: #{alive_machines.count}, created_machines: #{created_machines.count}, errored_machines: #{errored_machines.count}")
 
         created_machines.limit(limit)
       end
@@ -101,7 +104,7 @@ module Provider
 
       VSphere.with_connection do |vs|
         dest_folder = opts[:dest_folder]
-        vm_name = opts[:name] || 'lm_' + SecureRandom.hex(8)
+        vm_name = opts[:name] || "#{compute.image}-#{SecureRandom.hex(8)}"
         exception_cb = lambda do |_p1|
           LabManager.logger.warn(
             "Failed attempt to create virtual machine:  template_name: #{opts[:template_path]}"\
@@ -113,6 +116,7 @@ module Provider
           on: [RbVmomi::Fault, CreateVMError],
           exception_cb: exception_cb
         ) do
+          LabManager.logger.info "creating machine with name: #{vm_name} options: #{opts.inspect}"
           machine = vs.vm_clone(
             'datacenter'    => opts[:datacenter],
             'datastore'     => opts[:datastore],
