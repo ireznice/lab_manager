@@ -19,6 +19,10 @@ module LabManager
             [500, "Error: #{err.message}"]
           end
         end
+
+        get '/errored' do
+          halt 200, ::Compute.where(state: 'errored').map(&:id).to_json
+        end
       end
     end
   end
