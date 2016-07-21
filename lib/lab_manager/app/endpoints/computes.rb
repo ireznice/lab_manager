@@ -44,6 +44,14 @@ module LabManager
 
         delete '/:id' do
           compute = ::Compute.find(params[:id])
+          compute.with_lock('FOR UPDATE NOWAIT') do
+            if compute.state == 'created'
+              compute.terminate!
+              compute.terminated!
+              compute.save!
+              halt 200, { success: true}.to_json
+            end
+          end
           compute.actions.create!(command: :terminate_vm).to_json
         end
 
