@@ -1,0 +1,28 @@
+default: &default
+  log_level: <%= Logger::DEBUG %>
+  sentry_dsn:
+  graphite:
+  providers:
+    - v_sphere
+  redis:
+    url: redis://localhost:6379/2
+    size: 3
+    namespace: lab_manager
+  scheduler:
+    sleep_time: 2
+
+development:
+  <<: *default
+  log_level: <%= Logger::DEBUG %>
+
+
+test:
+  <<: *default
+  log_level: <%= Logger::INFO %>
+  providers:
+    - v_sphere
+    - static_machine
+
+production:
+  <<: *default
+

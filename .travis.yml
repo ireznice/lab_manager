@@ -13,6 +13,9 @@ services:
 
 before_script: |
   cp config/database.example.yml config/database.yml
+  cp config/vsphere.example.yml config/vsphere.yml
+  cp config/lab_manager.example.yml config/lab_manager.yml
+  cp config/static_machine.example.yml config/static_machine.yml
   rake db:drop db:create db:migrate
 
 script: bundle exec rspec
