@@ -1,12 +1,11 @@
 default: &default
-  log_level: <%= Logger::WARN %>
+  log_level: <%= Logger::DEBUG %>
   sentry_dsn:
   graphite:
   providers:
     - v_sphere
-    - static_machine
   redis:
-    url: redis://localhost:6379
+    url: redis://localhost:6379/2
     size: 3
     namespace: lab_manager
   scheduler:
@@ -20,6 +19,9 @@ development:
 test:
   <<: *default
   log_level: <%= Logger::INFO %>
+  providers:
+    - v_sphere
+    - static_machine
 
 production:
   <<: *default
