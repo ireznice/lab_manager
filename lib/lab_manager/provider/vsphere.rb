@@ -442,7 +442,7 @@ module Provider
 
     def vm_state
       set_provider_data
-      case compute.provider_data['power_state'].lowercase
+      case compute.provider_data['power_state'].downcase
       when 'poweredon'
         return :power_on
       when 'poweredoff'
