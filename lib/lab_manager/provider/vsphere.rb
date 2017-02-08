@@ -321,7 +321,7 @@ module Provider
       end
 
       return nil unless result_snapshot
-      
+
       {
         name: result_snapshot.name,
         ref: result_snapshot.ref,
@@ -442,10 +442,10 @@ module Provider
 
     def vm_state
       set_provider_data
-      case compute.provider_data['power_state']
-      when 'PoweredOn'
+      case compute.provider_data['power_state'].lowercase
+      when 'poweredon'
         return :power_on
-      when 'PoweredOff'
+      when 'poweredoff'
         return :power_off
       end
 
